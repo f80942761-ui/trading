@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexView Pro - Multi-Asset Trading Terminal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        tv: {
+                            950: '#0a0b10',
+                            900: '#131722',
+                            800: '#1e222d',
+                            700: '#2a2e39',
+                            600: '#363c4e',
+                            green: '#26a69a',
+                            red: '#ef5350'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Lightweight Charts from TradingView -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif; background-color: #131722; color: #d1d4dc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #131722; }
+        ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #363c4e; }
+    </style>
+</head>
+<body class="bg-tv-900 text-gray-200 flex flex-col h-screen overflow-hidden select-none">
+
+    <!-- TOP NAVIGATION BAR (TradingView Header Style) -->
+    <header class="bg-tv-900 border-b border-tv-700 px-3 py-2 flex items-center justify-between shrink-0 z-30 shadow-sm">
+        <div class="flex items-center space-x-4">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-2">
+                <div class="bg-gradient-to-tr from-blue-600 to-teal-400 text-white p-1.5 rounded-lg font-bold flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-chart-line text-sm"></i>
+                </div>
+                <span class="text-sm font-black tracking-wider text-white">APEX<span class="text-tv-green">VIEW</span></span>
+            </div>
+
+            <div class="h-5 w-px bg-tv-700"></div>
+
+            <!-- Active Symbol Header Info -->
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-1.5 cursor-pointer hover:bg-tv-800 px-2 py-1 rounded-lg transition-all" onclick="openAssetModal()">
+                    <span id="header-symbol-name" class="font-bold text-sm text-white">BTC/USDT</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
+                </div>
+                <div class="flex items-center space-x-3 font-mono text-xs">
+                    <span class="text-gray-400">B: <strong id="header-bid" class="text-tv-red">64200.00</strong></span>
+                    <span class="text-gray-400">A: <strong id="header-ask" class="text-tv-green">64215.00</strong></span>
+                </div>
+            </div>
+
+            <div class="h-5 w-px bg-tv-700 hidden md:block"></div>
+
+            <!-- Timeframe Selector -->
+            <div class="hidden md:flex items-center space-x-1 bg-tv-950 border border-tv-700 rounded-lg p-0.5 text-xs font-mono">
+                <button onclick="changeTimeframe('1m')" id="tf-1m" class="tf-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer">1m</button>
+                <button onclick="changeTimeframe('5m')" id="tf-5m" class="tf-btn px-2 py-1 rounded bg-tv-700 text-white font-bold cursor-pointer">5m</button>
+                <button onclick="changeTimeframe('15m')" id="tf-15m" class="tf-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer">15m</button>
+                <button onclick="changeTimeframe('1h')" id="tf-1h" class="tf-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer">1h</button>
+                <button onclick="changeTimeframe('4h')" id="tf-4h" class="tf-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer">4h</button>
+                <button onclick="changeTimeframe('1d')" id="tf-1d" class="tf-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer">1D</button>
+            </div>
+
+            <!-- Chart Type Selector -->
+            <div class="hidden lg:flex items-center space-x-1 bg-tv-950 border border-tv-700 rounded-lg p-0.5 text-xs">
+                <button onclick="setChartType('Candle')" id="ct-candle" class="ct-btn px-2 py-1 rounded bg-tv-700 text-white font-bold cursor-pointer" title="Candles"><i class="fa-solid fa-chart-candlestick"></i></button>
+                <button onclick="setChartType('Line')" id="ct-line" class="ct-btn px-2 py-1 rounded text-gray-400 hover:text-white cursor-pointer" title="Line"><i class="fa-solid fa-chart-line"></i></button>
+            </div>
+
+            <!-- Indicator Toggle Buttons -->
+            <div class="hidden xl:flex items-center space-x-1">
+                <button onclick="toggleIndicator('SMA')" id="ind-sma" class="px-2.5 py-1 rounded-lg text-xs bg-tv-800 border border-tv-700 text-gray-300 hover:text-white cursor-pointer">SMA 20</button>
+                <button onclick="toggleIndicator('RSI')" id="ind-rsi" class="px-2.5 py-1 rounded-lg text-xs bg-tv-800 border border-tv-700 text-gray-300 hover:text-white cursor-pointer">RSI</button>
+            </div>
+        </div>
+
+        <!-- Account Balance & Financial Summary Header -->
+        <div class="flex items-center space-x-3">
+            <div class="bg-tv-950 border border-tv-700 rounded-xl px-3 py-1 flex items-center space-x-3 text-xs font-mono shadow-inner">
+                <div>
+                    <span class="text-[9px] text-gray-400 uppercase tracking-wide block">Balance</span>
+                    <span id="hdr-balance" class="font-bold text-white">$10,000.00</span>
+                </div>
+                <div class="h-5 w-px bg-tv-700"></div>
+                <div>
+                    <span class="text-[9px] text-gray-400 uppercase tracking-wide block">Equity</span>
+                    <span id="hdr-equity" class="font-bold text-tv-green">$10,000.00</span>
+                </div>
+                <div class="h-5 w-px bg-tv-700"></div>
+                <div>
+                    <span class="text-[9px] text-gray-400 uppercase tracking-wide block">Free Margin</span>
+                    <span id="hdr-freemargin" class="font-bold text-gray-200">$10,000.00</span>
+                </div>
+            </div>
+            <button onclick="openDepositModal()" class="bg-tv-green hover:bg-teal-600 text-tv-950 font-bold px-3 py-1.5 rounded-lg text-xs transition-all shadow-md cursor-pointer flex items-center space-x-1.5">
+                <i class="fa-solid fa-wallet"></i><span>Deposit</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE CONTAINER -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR: WATCHLIST (Crypto, Stocks, Forex Tabs) -->
+        <aside class="w-72 bg-tv-900 border-r border-tv-700 flex flex-col shrink-0 z-10">
+            <!-- Watchlist Header & Search -->
+            <div class="p-2.5 border-b border-tv-700 space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-star text-amber-400"></i><span>Daftar Pantau</span>
+                    </span>
+                    <span class="text-[9px] bg-tv-800 text-gray-400 px-1.5 py-0.5 rounded font-mono">MULTI-ASSET</span>
+                </div>
+                <!-- Search input -->
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-xs text-gray-400"></i>
+                    <input type="text" id="watchlist-search" oninput="filterWatchlist()" placeholder="Cari aset (cth: BTC, AAPL, BBCA)..." class="w-full bg-tv-950 border border-tv-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-tv-green font-mono">
+                </div>
+                <!-- Category Tabs (Crypto, Stocks, Forex) -->
+                <div class="grid grid-cols-3 gap-1 bg-tv-950 p-1 rounded-lg text-xs">
+                    <button onclick="switchWatchCategory('CRYPTO')" id="wcat-crypto" class="py-1 font-bold rounded bg-tv-700 text-white transition-all cursor-pointer">Crypto</button>
+                    <button onclick="switchWatchCategory('STOCKS')" id="wcat-stocks" class="py-1 font-bold rounded text-gray-400 hover:text-white transition-all cursor-pointer">Saham</button>
+                    <button onclick="switchWatchCategory('FOREX')" id="wcat-forex" class="py-1 font-bold rounded text-gray-400 hover:text-white transition-all cursor-pointer">Forex</button>
+                </div>
+            </div>
+
+            <!-- Watchlist Items Box -->
+            <div id="watchlist-container" class="overflow-y-auto flex-1 divide-y divide-tv-700/40">
+                <!-- Populated dynamically -->
+            </div>
+        </aside>
+
+        <!-- CENTER & RIGHT WORKSPACE: Chart + Order Terminal -->
+        <div class="flex-1 flex flex-col overflow-hidden relative">
+
+            <!-- Chart & Order Panel Splitter -->
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+                
+                <!-- TradingView Chart Container Area -->
+                <div class="flex-1 bg-tv-900 relative flex flex-col min-h-[300px]">
+                    <div id="chart-container" class="w-full h-full absolute inset-0"></div>
+                </div>
+
+                <!-- RIGHT PANEL: ORDER EXECUTION TERMINAL (TradingView Broker Style) -->
+                <div class="w-full lg:w-80 bg-tv-900 border-t lg:border-t-0 lg:border-l border-tv-700 p-4 flex flex-col justify-between shrink-0 overflow-y-auto z-10">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center border-b border-tv-700 pb-2">
+                            <span class="text-xs font-bold text-white uppercase tracking-wide">Eksekusi Order</span>
+                            <span id="order-symbol-tag" class="text-[10px] font-mono bg-tv-green/20 text-tv-green px-2 py-0.5 rounded font-bold">BTC/USDT</span>
+                        </div>
+
+                        <!-- Order Type Selector (Market vs Limit) -->
+                        <div class="grid grid-cols-2 gap-1 bg-tv-950 p-1 rounded-xl border border-tv-700 text-xs">
+                            <button type="button" onclick="setOrderType('MARKET')" id="otype-market" class="py-1.5 font-bold rounded-lg bg-tv-green text-tv-950 transition-all cursor-pointer">Market Order</button>
+                            <button type="button" onclick="setOrderType('LIMIT')" id="otype-limit" class="py-1.5 font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer">Limit / Pending</button>
+                        </div>
+
+                        <!-- Limit Price Input (Hidden by default) -->
+                        <div id="limit-price-box" class="hidden">
+                            <label class="block text-[10px] font-medium text-gray-400 uppercase mb-1">Harga Limit Target</label>
+                            <input type="number" id="order-limit-price" step="0.01" placeholder="64000.00" class="w-full bg-tv-950 border border-tv-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-tv-green font-mono">
+                        </div>
+
+                        <!-- Size / Lots -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-medium text-gray-400 uppercase">Jumlah / Unit</label>
+                                <span class="text-[10px] text-gray-500" id="unit-label">1 Unit</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5">
+                                <button type="button" onclick="adjustAmount(-0.1)" class="bg-tv-800 hover:bg-tv-700 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">-</button>
+                                <input type="number" id="order-amount" value="0.5" step="0.01" min="0.01" max="100.0" oninput="calculateOrderPreview()" class="w-full bg-tv-950 border border-tv-700 rounded-lg px-2 py-1.5 text-center text-xs font-bold text-white focus:outline-none focus:border-tv-green font-mono">
+                                <button type="button" onclick="adjustAmount(0.1)" class="bg-tv-800 hover:bg-tv-700 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Leverage Selector -->
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-400 uppercase mb-1">Leverage Perdagangan</label>
+                            <select id="order-leverage" onchange="calculateOrderPreview()" class="w-full bg-tv-950 border border-tv-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-tv-green font-mono">
+                                <option value="1">1x (Spot / Tanpa Leverage)</option>
+                                <option value="10">10x Leverage</option>
+                                <option value="20">20x Leverage</option>
+                                <option value="50" selected>50x Leverage</option>
+                                <option value="100">100x Leverage</option>
+                            </select>
+                        </div>
+
+                        <!-- Stop Loss & Take Profit -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-medium text-gray-400 uppercase mb-1">Stop Loss (SL)</label>
+                                <input type="number" id="order-sl" step="0.01" placeholder="Harga SL" class="w-full bg-tv-950 border border-tv-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-tv-red font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-gray-400 uppercase mb-1">Take Profit (TP)</label>
+                                <input type="number" id="order-tp" step="0.01" placeholder="Harga TP" class="w-full bg-tv-950 border border-tv-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-tv-green font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Margin Required Card -->
+                        <div class="bg-tv-950 rounded-xl p-3 border border-tv-700/60 text-[11px] space-y-1.5 font-mono">
+                            <div class="flex justify-between text-gray-400">
+                                <span>Nilai Posisi:</span>
+                                <span id="preview-notional" class="text-white font-bold">$32,100.00</span>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>Margin Dibutuhkan:</span>
+                                <span id="preview-margin" class="text-white font-bold">$642.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Buy (Long) & Sell (Short) Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2 pt-3">
+                        <button type="button" onclick="executeTrade('SELL')" class="bg-tv-red hover:bg-red-600 active:scale-95 text-white rounded-xl py-3 px-2 font-bold text-xs shadow-lg shadow-red-500/10 transition-all flex flex-col items-center justify-center cursor-pointer">
+                            <span class="text-[10px] font-normal opacity-90 uppercase">JUAL / SHORT</span>
+                            <span id="btn-sell-price" class="text-xs font-mono font-black mt-0.5">64200.00</span>
+                        </button>
+                        <button type="button" onclick="executeTrade('BUY')" class="bg-tv-green hover:bg-teal-600 active:scale-95 text-tv-950 rounded-xl py-3 px-2 font-bold text-xs shadow-lg shadow-teal-500/10 transition-all flex flex-col items-center justify-center cursor-pointer">
+                            <span class="text-[10px] font-normal opacity-90 uppercase">BELI / LONG</span>
+                            <span id="btn-buy-price" class="text-xs font-mono font-black mt-0.5">64215.00</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- BOTTOM TERMINAL PANEL (TradingView Portfolio / Positions Tabs) -->
+            <div class="bg-tv-900 border-t border-tv-700 h-48 flex flex-col shrink-0">
+                <div class="flex border-b border-tv-700 px-3 bg-tv-900/90 items-center justify-between">
+                    <div class="flex space-x-2">
+                        <button onclick="switchBottomTab('positions')" id="btntab-positions" class="btntab py-2 px-3 text-xs font-bold text-tv-green border-b-2 border-tv-green transition-all cursor-pointer">Posisi Terbuka (<span id="count-open">0</span>)</button>
+                        <button onclick="switchBottomTab('history')" id="btntab-history" class="btntab py-2 px-3 text-xs font-bold text-gray-400 hover:text-white transition-all cursor-pointer">Riwayat Order</button>
+                    </div>
+                    <div class="text-[10px] text-gray-400 font-mono">Terminal Server: <span class="text-tv-green font-bold">Connected (0ms)</span></div>
+                </div>
+
+                <!-- 1. Open Positions View Table -->
+                <div id="panel-positions" class="flex-1 overflow-y-auto">
+                    <table class="w-full text-left border-collapse text-xs font-mono">
+                        <thead>
+                            <tr class="bg-tv-950 text-gray-400 border-b border-tv-700 sticky top-0 text-[11px]">
+                                <th class="p-2.5">ID / Aset</th>
+                                <th class="p-2.5">Aksi</th>
+                                <th class="p-2.5">Jumlah</th>
+                                <th class="p-2.5">Harga Masuk</th>
+                                <th class="p-2.5">Harga Pasar</th>
+                                <th class="p-2.5">Margin / Lev</th>
+                                <th class="p-2.5">Profit / Rugi ($)</th>
+                                <th class="p-2.5 text-right">Aksi Tutup</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-positions" class="divide-y divide-tv-700/30">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="empty-positions" class="flex flex-col items-center justify-center h-20 text-gray-500 text-xs">
+                        <i class="fa-solid fa-folder-open text-lg mb-1 opacity-40"></i>
+                        <span>Belum ada posisi trading yang terbuka</span>
+                    </div>
+                </div>
+
+                <!-- 2. Transaction History View Table -->
+                <div id="panel-history" class="flex-1 overflow-y-auto hidden">
+                    <table class="w-full text-left border-collapse text-xs font-mono">
+                        <thead>
+                            <tr class="bg-tv-950 text-gray-400 border-b border-tv-700 sticky top-0 text-[11px]">
+                                <th class="p-2.5">ID / Aset</th>
+                                <th class="p-2.5">Aksi</th>
+                                <th class="p-2.5">Jumlah</th>
+                                <th class="p-2.5">Masuk</th>
+                                <th class="p-2.5">Keluar</th>
+                                <th class="p-2.5 text-right">Net P&L ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-history" class="divide-y divide-tv-700/30">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="empty-history" class="flex flex-col items-center justify-center h-20 text-gray-500 text-xs">
+                        <i class="fa-solid fa-clock-rotate-left text-lg mb-1 opacity-40"></i>
+                        <span>Belum ada riwayat transaksi selesai</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- MODAL: ASSET SELECTOR SEARCH POPUP -->
+    <div id="modal-assets" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-tv-900 border border-tv-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-tv-700 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-magnifying-glass text-tv-green"></i><span>Pilih Instrumen Trading</span>
+                </h3>
+                <button onclick="closeAssetModal()" class="text-gray-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            <input type="text" id="modal-search-input" oninput="filterModalAssets()" placeholder="Cari nama koin, saham, atau forex..." class="w-full bg-tv-950 border border-tv-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-tv-green font-mono">
+            <div id="modal-asset-list" class="max-h-64 overflow-y-auto space-y-1 pr-1">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DEPOSIT SALDO -->
+    <div id="modal-deposit" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-tv-900 border border-tv-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-tv-green/20 text-tv-green flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h3 class="text-sm font-bold text-white">Deposit Dana Demo</h3>
+            </div>
+            <p class="text-xs text-gray-300 leading-relaxed">Tambahkan saldo akun demo Anda untuk simulasi trading multi-aset.</p>
+            <div>
+                <label class="block text-[10px] uppercase text-gray-400 mb-1">Jumlah Deposit ($)</label>
+                <input type="number" id="deposit-amount" value="5000" step="500" class="w-full bg-tv-950 border border-tv-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-tv-green">
+            </div>
+            <div class="flex justify-end space-x-2 pt-1">
+                <button onclick="closeDepositModal()" class="bg-tv-800 text-gray-300 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-tv-700">Batal</button>
+                <button onclick="confirmDeposit()" class="bg-tv-green hover:bg-teal-600 text-tv-950 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Konfirmasi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION MODAL -->
+    <div id="modal-notification" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-tv-900 border border-tv-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center space-x-3">
+                <div id="notif-icon-box" class="w-10 h-10 rounded-xl bg-tv-green/20 text-tv-green flex items-center justify-center font-bold text-lg">
+                    <i id="notif-icon" class="fa-solid fa-check"></i>
+                </div>
+                <h3 id="notif-title" class="text-sm font-bold text-white">Notifikasi</h3>
+            </div>
+            <p id="notif-msg" class="text-xs text-gray-300 leading-relaxed">Pesan sistem...</p>
+            <div class="flex justify-end pt-1">
+                <button onclick="closeNotification()" class="bg-tv-green hover:bg-teal-600 text-tv-950 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <script>
+        // Account State
+        let account = {
+            balance: 10000.00,
+            equity: 10000.00,
+            margin: 0.00,
+            freeMargin: 10000.00
+        };
+
+        // Multi-Asset Database (Crypto, Stocks, Forex)
+        let symbols = {
+            // Crypto
+            'BTCUSDT': { category: 'CRYPTO', name: 'BTC/USDT', desc: 'Bitcoin / Tether', digits: 2, bid: 64200.00, ask: 64215.00, change: '+2.45%', history: [] },
+            'ETHUSDT': { category: 'CRYPTO', name: 'ETH/USDT', desc: 'Ethereum / Tether', digits: 2, bid: 3450.00, ask: 3452.50, change: '+1.80%', history: [] },
+            'SOLUSDT': { category: 'CRYPTO', name: 'SOL/USDT', desc: 'Solana / Tether', digits: 2, bid: 152.40, ask: 152.65, change: '+4.10%', history: [] },
+            'XRPUSDT': { category: 'CRYPTO', name: 'XRP/USDT', desc: 'Ripple / Tether', digits: 4, bid: 0.5420, ask: 0.5425, change: '-0.65%', history: [] },
+            
+            // Stocks (Global & IDX Indonesia)
+            'AAPL': { category: 'STOCKS', name: 'AAPL', desc: 'Apple Inc. (NASDAQ)', digits: 2, bid: 224.50, ask: 224.70, change: '+0.95%', history: [] },
+            'TSLA': { category: 'STOCKS', name: 'TSLA', desc: 'Tesla Inc. (NASDAQ)', digits: 2, bid: 251.20, ask: 251.50, change: '-1.40%', history: [] },
+            'MSFT': { category: 'STOCKS', name: 'MSFT', desc: 'Microsoft Corp. (NASDAQ)', digits: 2, bid: 448.30, ask: 448.60, change: '+0.50%', history: [] },
+            'BBCA': { category: 'STOCKS', name: 'BBCA', desc: 'Bank Central Asia Tbk (IDX)', digits: 0, bid: 10150, ask: 10175, change: '+1.25%', history: [] },
+            'BBRI': { category: 'STOCKS', name: 'BBRI', desc: 'Bank Rakyat Indonesia (IDX)', digits: 0, bid: 4950, ask: 4970, change: '-0.50%', history: [] },
+
+            // Forex
+            'EURUSD': { category: 'FOREX', name: 'EUR/USD', desc: 'Euro / US Dollar', digits: 5, bid: 1.08500, ask: 1.08515, change: '+0.15%', history: [] },
+            'GBPUSD': { category: 'FOREX', name: 'GBP/USD', desc: 'British Pound / US Dollar', digits: 5, bid: 1.26400, ask: 1.26422, change: '-0.08%', history: [] },
+            'USDJPY': { category: 'FOREX', name: 'USD/JPY', desc: 'US Dollar / Japanese Yen', digits: 3, bid: 154.200, ask: 154.225, change: '+0.42%', history: [] },
+            'XAUUSD': { category: 'FOREX', name: 'XAU/USD', desc: 'Gold Spot / US Dollar', digits: 2, bid: 2385.50, ask: 2386.30, change: '+1.10%', history: [] }
+        };
+
+        let activeSymbol = 'BTCUSDT';
+        let activeWatchCategory = 'CRYPTO';
+        let currentTimeframe = '5m';
+        let currentChartType = 'Candle';
+        let currentOrderType = 'MARKET'; // MARKET or LIMIT
+
+        let openPositions = [];
+        let closedHistory = [];
+
+        let chart = null;
+        let mainSeries = null;
+        let smaSeries = null;
+        let rsiSeries = null;
+        let showSMA = false;
+        let showRSI = false;
+
+        // Initialize Application
+        window.onload = function() {
+            generateInitialHistory();
+            initTradingViewChart();
+            renderWatchlist();
+            calculateOrderPreview();
+            updateAccountSummary();
+
+            // Market feed tick simulator every 2 seconds
+            setInterval(simulateMarketTicks, 2000);
+        };
+
+        // Generate synthetic initial history for all symbols
+        function generateInitialHistory() {
+            for (let code in symbols) {
+                let base = symbols[code].bid;
+                let data = [];
+                let time = Math.floor(Date.now() / 1000) - (200 * 300);
+                let currentVal = base;
+
+                for (let i = 0; i < 200; i++) {
+                    let delta = (Math.random() - 0.49) * (base * 0.002);
+                    let open = currentVal;
+                    let close = open + delta;
+                    let high = Math.max(open, close) + Math.random() * (base * 0.001);
+                    let low = Math.min(open, close) - Math.random() * (base * 0.001);
+
+                    data.push({
+                        time: time,
+                        open: Number(open.toFixed(symbols[code].digits)),
+                        high: Number(high.toFixed(symbols[code].digits)),
+                        low: Number(low.toFixed(symbols[code].digits)),
+                        close: Number(close.toFixed(symbols[code].digits))
+                    });
+
+                    currentVal = close;
+                    time += 300; // 5 min
+                }
+                symbols[code].history = data;
+            }
+        }
+
+        // Initialize Lightweight Charts
+        function initTradingViewChart() {
+            const container = document.getElementById('chart-container');
+            if (!container) return;
+
+            chart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: '#131722' },
+                    textColor: '#9398a2',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                    horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                timeScale: {
+                    borderColor: '#2a2e39',
+                    timeVisible: true,
+                },
+            });
+
+            setChartType('Candle');
+            loadChartDataForActiveSymbol();
+
+            window.addEventListener('resize', () => {
+                if (chart && container) {
+                    chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+                }
+            });
+        }
+
+        function setChartType(type) {
+            currentChartType = type;
+            document.querySelectorAll('.ct-btn').forEach(b => {
+                b.classList.remove('bg-tv-700', 'text-white');
+                b.classList.add('text-gray-400');
+            });
+            document.getElementById(type === 'Candle' ? 'ct-candle' : 'ct-line').classList.add('bg-tv-700', 'text-white');
+            document.getElementById(type === 'Candle' ? 'ct-candle' : 'ct-line').classList.remove('text-gray-400');
+
+            if (mainSeries) chart.removeSeries(mainSeries);
+
+            if (type === 'Candle') {
+                mainSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderVisible: false,
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350',
+                });
+            } else {
+                mainSeries = chart.addLineSeries({
+                    color: '#26a69a',
+                    lineWidth: 2,
+                });
+            }
+            loadChartDataForActiveSymbol();
+        }
+
+        function loadChartDataForActiveSymbol() {
+            let sym = symbols[activeSymbol];
+            document.getElementById('header-symbol-name').innerText = sym.name;
+            document.getElementById('order-symbol-tag').innerText = sym.name;
+            document.getElementById('header-bid').innerText = sym.bid.toFixed(sym.digits);
+            document.getElementById('header-ask').innerText = sym.ask.toFixed(sym.digits);
+            document.getElementById('btn-sell-price').innerText = sym.bid.toFixed(sym.digits);
+            document.getElementById('btn-buy-price').innerText = sym.ask.toFixed(sym.digits);
+
+            if (currentChartType === 'Candle') {
+                mainSeries.setData(sym.history);
+            } else {
+                let lineData = sym.history.map(d => ({ time: d.time, value: d.close }));
+                mainSeries.setData(lineData);
+            }
+
+            if (showSMA) updateSMASeries();
+            chart.timeScale().fitContent();
+        }
+
+        function updateSMASeries() {
+            let sym = symbols[activeSymbol];
+            let data = sym.history;
+            let smaData = [];
+            let period = 20;
+
+            for (let i = period - 1; i < data.length; i++) {
+                let sum = 0;
+                for (let j = 0; j < period; j++) sum += data[i - j].close;
+                smaData.push({ time: data[i].time, value: sum / period });
+            }
+
+            if (!smaSeries) {
+                smaSeries = chart.addLineSeries({ color: '#2962ff', lineWidth: 2 });
+            }
+            smaSeries.setData(smaData);
+        }
+
+        function toggleIndicator(ind) {
+            if (ind === 'SMA') {
+                showSMA = !showSMA;
+                let btn = document.getElementById('ind-sma');
+                if (showSMA) {
+                    btn.classList.add('bg-tv-700', 'text-white');
+                    updateSMASeries();
+                } else {
+                    btn.classList.remove('bg-tv-700', 'text-white');
+                    if (smaSeries) { chart.removeSeries(smaSeries); smaSeries = null; }
+                }
+            }
+        }
+
+        function changeTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.tf-btn').forEach(b => {
+                b.classList.remove('bg-tv-700', 'text-white', 'font-bold');
+                b.classList.add('text-gray-400');
+            });
+            document.getElementById('tf-' + tf).classList.add('bg-tv-700', 'text-white', 'font-bold');
+            document.getElementById('tf-' + tf).classList.remove('text-gray-400');
+        }
+
+        // Watchlist Category & Rendering
+        function switchWatchCategory(cat) {
+            activeWatchCategory = cat;
+            ['crypto', 'stocks', 'forex'].forEach(c => {
+                let btn = document.getElementById('wcat-' + c);
+                if (c === cat.toLowerCase()) {
+                    btn.className = 'py-1 font-bold rounded bg-tv-700 text-white transition-all cursor-pointer';
+                } else {
+                    btn.className = 'py-1 font-bold rounded text-gray-400 hover:text-white transition-all cursor-pointer';
+                }
+            });
+            renderWatchlist();
+        }
+
+        function renderWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let searchQuery = document.getElementById('watchlist-search').value.toLowerCase();
+
+            for (let code in symbols) {
+                let sym = symbols[code];
+                if (sym.category !== activeWatchCategory) continue;
+                if (searchQuery && !sym.name.toLowerCase().includes(searchQuery) && !sym.desc.toLowerCase().includes(searchQuery)) continue;
+
+                let isSelected = code === activeSymbol;
+                let isPos = sym.change.startsWith('+');
+
+                let div = document.createElement('div');
+                div.className = `p-2.5 cursor-pointer transition-all hover:bg-tv-800 flex items-center justify-between ${isSelected ? 'bg-tv-800 border-l-4 border-tv-green' : ''}`;
+                div.onclick = () => {
+                    activeSymbol = code;
+                    renderWatchlist();
+                    loadChartDataForActiveSymbol();
+                    calculateOrderPreview();
+                };
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="font-bold text-xs text-white">${sym.name}</span>
+                            <span class="text-[9px] text-gray-400">${sym.category}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400 font-mono">${sym.bid.toFixed(sym.digits)}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold font-mono text-white">${sym.ask.toFixed(sym.digits)}</span>
+                        <p class="text-[9px] font-semibold ${isPos ? 'text-tv-green' : 'text-tv-red'}">${sym.change}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function filterWatchlist() {
+            renderWatchlist();
+        }
+
+        // Asset Modal Search Popup
+        function openAssetModal() {
+            document.getElementById('modal-assets').classList.remove('hidden');
+            renderModalAssets('');
+        }
+        function closeAssetModal() {
+            document.getElementById('modal-assets').classList.add('hidden');
+        }
+        function renderModalAssets(query) {
+            let list = document.getElementById('modal-asset-list');
+            list.innerHTML = '';
+            for (let code in symbols) {
+                let sym = symbols[code];
+                if (query && !sym.name.toLowerCase().includes(query) && !sym.desc.toLowerCase().includes(query)) continue;
+                let div = document.createElement('div');
+                div.className = 'p-2.5 rounded-xl hover:bg-tv-800 cursor-pointer flex justify-between items-center text-xs transition-all';
+                div.onclick = () => {
+                    activeSymbol = code;
+                    activeWatchCategory = sym.category;
+                    switchWatchCategory(sym.category);
+                    loadChartDataForActiveSymbol();
+                    closeAssetModal();
+                };
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-white">${sym.name}</span>
+                        <p class="text-[10px] text-gray-400">${sym.desc}</p>
+                    </div>
+                    <span class="font-mono text-tv-green">${sym.ask.toFixed(sym.digits)}</span>
+                `;
+                list.appendChild(div);
+            }
+        }
+        function filterModalAssets() {
+            let q = document.getElementById('modal-search-input').value.toLowerCase();
+            renderModalAssets(q);
+        }
+
+        // Order Type & Calculation
+        function setOrderType(type) {
+            currentOrderType = type;
+            let mBtn = document.getElementById('otype-market');
+            let lBtn = document.getElementById('otype-limit');
+            let limitBox = document.getElementById('limit-price-box');
+
+            if (type === 'MARKET') {
+                mBtn.className = 'py-1.5 font-bold rounded-lg bg-tv-green text-tv-950 transition-all cursor-pointer';
+                lBtn.className = 'py-1.5 font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer';
+                limitBox.classList.add('hidden');
+            } else {
+                lBtn.className = 'py-1.5 font-bold rounded-lg bg-tv-green text-tv-950 transition-all cursor-pointer';
+                mBtn.className = 'py-1.5 font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer';
+                limitBox.classList.remove('hidden');
+            }
+        }
+
+        function adjustAmount(amt) {
+            let input = document.getElementById('order-amount');
+            let val = parseFloat(input.value) + amt;
+            if (val < 0.01) val = 0.01;
+            input.value = val.toFixed(2);
+            calculateOrderPreview();
+        }
+
+        function calculateOrderPreview() {
+            let sym = symbols[activeSymbol];
+            let amount = parseFloat(document.getElementById('order-amount').value) || 0.5;
+            let lev = parseInt(document.getElementById('order-leverage').value) || 50;
+
+            let price = sym.ask;
+            let notional = amount * price;
+            let marginReq = notional / lev;
+
+            document.getElementById('preview-notional').innerText = '$' + notional.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('preview-margin').innerText = '$' + marginReq.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        // Simulate Real-time Market Ticks
+        function simulateMarketTicks() {
+            for (let code in symbols) {
+                let sym = symbols[code];
+                let delta = (Math.random() - 0.49) * (sym.bid * 0.0005);
+                sym.bid += delta;
+                sym.ask = sym.bid + (sym.bid * 0.0003);
+
+                if (sym.history.length > 0) {
+                    let last = sym.history[sym.history.length - 1];
+                    last.close = Number(sym.ask.toFixed(sym.digits));
+                    last.high = Math.max(last.high, last.close);
+                    last.low = Math.min(last.low, last.close);
+                }
+            }
+
+            loadChartDataForActiveSymbol();
+            renderWatchlist();
+            updatePositionsProfit();
+        }
+
+        // Execute Trade
+        function executeTrade(action) {
+            let sym = symbols[activeSymbol];
+            let amount = parseFloat(document.getElementById('order-amount').value) || 0.5;
+            let lev = parseInt(document.getElementById('order-leverage').value) || 50;
+            let sl = parseFloat(document.getElementById('order-sl').value) || null;
+            let tp = parseFloat(document.getElementById('order-tp').value) || null;
+
+            let openPrice = action === 'BUY' ? sym.ask : sym.bid;
+            let notional = amount * openPrice;
+            let marginReq = notional / lev;
+
+            if (account.freeMargin < marginReq) {
+                showNotification('Margin Tidak Cukup', 'Free margin akun Anda tidak mencukupi untuk membuka posisi ini.', 'error');
+                return;
+            }
+
+            let newPos = {
+                id: 'POS-' + Math.floor(100000 + Math.random() * 900000),
+                symbol: activeSymbol,
+                name: sym.name,
+                type: action,
+                amount: amount,
+                openPrice: openPrice,
+                leverage: lev,
+                margin: marginReq,
+                sl: sl,
+                tp: tp,
+                profit: 0.00
+            };
+
+            openPositions.push(newPos);
+            renderOpenPositions();
+            updateAccountSummary();
+            showNotification('Order Dieksekusi', `Posisi ${action} ${amount} ${sym.name} berhasil dibuka pada harga ${openPrice.toFixed(sym.digits)}.`, 'success');
+        }
+
+        // Render Open Positions
+        function renderOpenPositions() {
+            let tbody = document.getElementById('tbody-positions');
+            tbody.innerHTML = '';
+            document.getElementById('count-open').innerText = openPositions.length;
+
+            if (openPositions.length === 0) {
+                document.getElementById('empty-positions').classList.remove('hidden');
+                updateAccountSummary();
+                return;
+            }
+            document.getElementById('empty-positions').classList.add('hidden');
+
+            openPositions.forEach((pos, idx) => {
+                let sym = symbols[pos.symbol];
+                let curPrice = pos.type === 'BUY' ? sym.bid : sym.ask;
+                let priceDiff = pos.type === 'BUY' ? (curPrice - pos.openPrice) : (pos.openPrice - curPrice);
+
+                pos.profit = priceDiff * pos.amount * (pos.symbol === 'XAUUSD' ? 10 : 1);
+
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-tv-800/60 border-b border-tv-700/30';
+                tr.innerHTML = `
+                    <td class="p-2.5">
+                        <div class="font-bold text-white">${pos.id}</div>
+                        <div class="text-[9px] text-gray-400">${pos.name}</div>
+                    </td>
+                    <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${pos.type === 'BUY' ? 'bg-tv-green/20 text-tv-green' : 'bg-tv-red/20 text-tv-red'}">${pos.type}</span></td>
+                    <td class="p-2.5">${pos.amount.toFixed(2)}</td>
+                    <td class="p-2.5">${pos.openPrice.toFixed(sym.digits)}</td>
+                    <td class="p-2.5">${curPrice.toFixed(sym.digits)}</td>
+                    <td class="p-2.5">$${pos.margin.toFixed(2)} / ${pos.leverage}x</td>
+                    <td class="p-2.5 font-bold ${pos.profit >= 0 ? 'text-tv-green' : 'text-tv-red'}">${pos.profit >= 0 ? '+' : ''}$${pos.profit.toFixed(2)}</td>
+                    <td class="p-2.5 text-right">
+                        <button onclick="closePosition(${idx})" class="bg-tv-red/20 hover:bg-tv-red text-tv-red hover:text-white px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer">Tutup</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateAccountSummary();
+        }
+
+        function updatePositionsProfit() {
+            if (openPositions.length > 0) renderOpenPositions();
+        }
+
+        function closePosition(idx) {
+            let pos = openPositions[idx];
+            let sym = symbols[pos.symbol];
+            let closePrice = pos.type === 'BUY' ? sym.bid : sym.ask;
+
+            closedHistory.unshift({
+                ...pos,
+                closePrice: closePrice,
+                closedAt: new Date().toLocaleTimeString()
+            });
+
+            account.balance += pos.profit;
+            openPositions.splice(idx, 1);
+
+            renderOpenPositions();
+            renderHistory();
+            updateAccountSummary();
+            showNotification('Posisi Ditutup', `Posisi ${pos.id} ditutup dengan profit $${pos.profit.toFixed(2)}.`, pos.profit >= 0 ? 'success' : 'error');
+        }
+
+        function renderHistory() {
+            let tbody = document.getElementById('tbody-history');
+            tbody.innerHTML = '';
+            if (closedHistory.length === 0) {
+                document.getElementById('empty-history').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('empty-history').classList.add('hidden');
+
+            closedHistory.forEach(h => {
+                let sym = symbols[h.symbol];
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-tv-800/60 border-b border-tv-700/30';
+                tr.innerHTML = `
+                    <td class="p-2.5"><div class="font-bold text-white">${h.id}</div><div class="text-[9px] text-gray-400">${h.name}</div></td>
+                    <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${h.type === 'BUY' ? 'bg-tv-green/20 text-tv-green' : 'bg-tv-red/20 text-tv-red'}">${h.type}</span></td>
+                    <td class="p-2.5">${h.amount.toFixed(2)}</td>
+                    <td class="p-2.5">${h.openPrice.toFixed(sym.digits)}</td>
+                    <td class="p-2.5">${h.closePrice.toFixed(sym.digits)}</td>
+                    <td class="p-2.5 text-right font-bold ${h.profit >= 0 ? 'text-tv-green' : 'text-tv-red'}">${h.profit >= 0 ? '+' : ''}$${h.profit.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function switchBottomTab(tab) {
+            ['positions', 'history'].forEach(t => {
+                document.getElementById('panel-' + t).classList.add('hidden');
+                document.getElementById('btntab-' + t).className = 'btntab py-2 px-3 text-xs font-bold text-gray-400 hover:text-white transition-all cursor-pointer';
+            });
+            document.getElementById('panel-' + tab).classList.remove('hidden');
+            document.getElementById('btntab-' + tab).className = 'btntab py-2 px-3 text-xs font-bold text-tv-green border-b-2 border-tv-green transition-all cursor-pointer';
+        }
+
+        function updateAccountSummary() {
+            let totalProfit = openPositions.reduce((acc, p) => acc + p.profit, 0);
+            let totalMargin = openPositions.reduce((acc, p) => acc + p.margin, 0);
+
+            account.equity = account.balance + totalProfit;
+            account.margin = totalMargin;
+            account.freeMargin = account.equity - totalMargin;
+
+            document.getElementById('hdr-balance').innerText = '$' + account.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('hdr-equity').innerText = '$' + account.equity.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('hdr-freemargin').innerText = '$' + account.freeMargin.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        // Deposit Modal
+        function openDepositModal() {
+            document.getElementById('modal-deposit').classList.remove('hidden');
+        }
+        function closeDepositModal() {
+            document.getElementById('modal-deposit').classList.add('hidden');
+        }
+        function confirmDeposit() {
+            let amt = parseFloat(document.getElementById('deposit-amount').value) || 1000;
+            account.balance += amt;
+            updateAccountSummary();
+            closeDepositModal();
+            showNotification('Deposit Berhasil', `Dana demo sebesar $${amt.toLocaleString()} berhasil ditambahkan ke saldo akun Anda.`, 'success');
+        }
+
+        // Notification Modal
+        function showNotification(title, msg, type = 'success') {
+            document.getElementById('notif-title').innerText = title;
+            document.getElementById('notif-msg').innerText = msg;
+            let iconBox = document.getElementById('notif-icon-box');
+            let icon = document.getElementById('notif-icon');
+
+            if (type === 'success') {
+                iconBox.className = 'w-10 h-10 rounded-xl bg-tv-green/20 text-tv-green flex items-center justify-center font-bold text-lg';
+                icon.className = 'fa-solid fa-check';
+            } else {
+                iconBox.className = 'w-10 h-10 rounded-xl bg-tv-red/20 text-tv-red flex items-center justify-center font-bold text-lg';
+                icon.className = 'fa-solid fa-triangle-exclamation';
+            }
+            document.getElementById('modal-notification').classList.remove('hidden');
+        }
+        function closeNotification() {
+            document.getElementById('modal-notification').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
